@@ -1,4 +1,33 @@
-﻿function Get-PublicKeyFromGateway {
+﻿<#
+.SYNOPSIS
+    Encrypts KeyPair credentials for a Fabric / Power BI on-premises gateway.
+
+.DESCRIPTION
+    Implements the full AES-256-CBC + RSA-OAEP-SHA256 + HMAC-SHA256 encryption
+    pipeline required by the Power BI REST API when updating gateway data-source
+    credentials of type KeyPair (username + private key, optional passphrase).
+
+    Credential type : KeyPair
+    Required fields : username, privatekey
+    Optional fields : passphrase  (omit or leave empty if the key is unprotected)
+
+    Authentication  : Azure token via Az PowerShell module.
+                      Run `Connect-AzAccount` before executing this script.
+
+.PREREQUISITE
+    Install-Module -Name Az -Scope CurrentUser
+
+.EXAMPLE
+    # With passphrase
+    $result = Encrypt-Credentials -gateway_id "<guid>" -username "myuser" `
+                                  -privatekey "<pem>" -passphrase "<secret>"
+
+    # Without passphrase
+    $result = Encrypt-Credentials -gateway_id "<guid>" -username "myuser" `
+                                  -privatekey "<pem>"
+#>
+
+function Get-PublicKeyFromGateway {
     param (
         [string]$gateway_id
     )
@@ -86,19 +115,27 @@ function Encrypt-Keys {
 
 function Encrypt-Credentials {
     param (
+        [Parameter(Mandatory = $true)]
         [string]$gateway_id,
+
+        [Parameter(Mandatory = $true)]
         [string]$username,
+
+        [Parameter(Mandatory = $true)]
         [string]$privatekey,
-        [string]$passphrase
+
+        # Leave empty string if the private key has no passphrase
+        [Parameter(Mandatory = $false)]
+        [string]$passphrase = ""
     )
 
-    $publicKey = Get-PublicKeyFromGateway -gateway_id $gateway_id
-    $modulus_b64 = $publicKey.Modulus
+    $publicKey   = Get-PublicKeyFromGateway -gateway_id $gateway_id
+    $modulus_b64  = $publicKey.Modulus
     $exponent_b64 = $publicKey.Exponent
 
     $credentials = @{
         credentialData = @(
-            @{ name = "username"; value = $username },
+            @{ name = "username";   value = $username },
             @{ name = "privatekey"; value = $privatekey },
             @{ name = "passphrase"; value = $passphrase }
         )
@@ -131,12 +168,19 @@ function Encrypt-Credentials {
     return $encryptedKeys + $signed
 }
 
-# Example execution:
-$gateway_id = ""
-$username = ""
-$privatekey = ""
+# ---------------------------------------------------------------------------
+# Example execution  –  fill in values before running
+# ---------------------------------------------------------------------------
+# Required
+$gateway_id    = ""  # Fabric / Power BI gateway ID (GUID)
+$username      = ""  # Username associated with the private key
+$privatekey    = ""  # Private key content (PEM string)
+$outputFilePath = ""  # File path to write the encrypted payload
+
+# Optional – leave empty string if the private key has no passphrase
 $passphrase = ""
 
-$outputFilePath = ""
-$result = Encrypt-Credentials -gateway_id $gateway_id -username $username -privatekey $privatekey -passphrase $passphrase
+$result = Encrypt-Credentials -gateway_id $gateway_id -username $username `
+                               -privatekey $privatekey -passphrase $passphrase
 $result | Set-Content -Path $outputFilePath -Encoding UTF8
+Write-Host "Encrypted payload written to: $outputFilePath"

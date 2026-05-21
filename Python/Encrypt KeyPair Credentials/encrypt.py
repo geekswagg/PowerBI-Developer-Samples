@@ -1,3 +1,17 @@
+# ---------------------------------------------------------------------------
+# encrypt_keypair_credentials.py
+#
+# Sample script for encrypting KeyPair credentials (username, private key,
+# and optional passphrase) against a Fabric/Power BI on-premises gateway.
+#
+# Credential type: KeyPair
+# Required fields : username, privatekey
+# Optional fields : passphrase
+#
+# Authentication  : Azure CLI  (run `az login` before executing)
+# Dependencies    : see requirements.txt
+# ---------------------------------------------------------------------------
+
 import subprocess
 import json
 import requests
@@ -9,7 +23,7 @@ from Crypto.Hash import HMAC, SHA256
 
 
 def get_azure_cli_access_token(resource: str = 'https://api.fabric.microsoft.com') -> str:
-    cmd = f'az account get-access-token --resource {resource} --output json'
+    cmd = ['az', 'account', 'get-access-token', '--resource', resource, '--output', 'json']
     result = subprocess.run(
         cmd,
         stdout=subprocess.PIPE,
@@ -109,6 +123,10 @@ def build_key_pair_credentials(username: str, privatekey: str, passphrase: str) 
 
 # === Sample Run ===
 if __name__ == "__main__":
+    # ----------------------------------------------------------------
+    # Fill in the values below before running.
+    # Leave passphrase as empty string if not required.
+    # ----------------------------------------------------------------
     gateway_id = ""
     username = ""
     privatekey = ""
